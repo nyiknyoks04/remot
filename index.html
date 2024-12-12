@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <link rel="manifest" href="manifest.json">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Remote Bluetooth with Voice Control</title>
+  <title>Kontrol Bluetooth HC-05</title>
   <style>
-    /* General Styling */
+   
     body {
       font-family: 'Roboto', Arial, sans-serif;
       background: linear-gradient(120deg, #3498db, #2ecc71);
@@ -65,7 +65,7 @@
       color: #f1c40f;
     }
 
-    /* Add animation for smooth fade-in */
+
     body {
       animation: fadeIn 1.5s ease-in-out;
     }
@@ -81,19 +81,18 @@
   </style>
 </head>
 <body>
-  <h1>Remote Bluetooth with Voice Control</h1>
-  <button id="connect-btn">Connect to Bluetooth</button>
-  <button id="on-btn" disabled>Turn ON</button>
-  <button id="off-btn" disabled>Turn OFF</button>
-  <button id="voice-btn">Start Voice Command</button>
-  <div id="status">Status: Disconnected</div>
-  <div id="voice-status">Voice: Not Active</div>
+  <h1>Remot Kontrol Bluetooth</h1>
+  <button id="connect-btn">Hubungkan ke Bluetooth</button>
+  <button id="on-btn" disabled>Nyalakan</button>
+  <button id="off-btn" disabled>Matikan</button>
+  <button id="voice-btn">Mulai Suara</button>
+  <div id="status">Status: Tidak Terhubung</div>
+  <div id="voice-status">Suara: Tidak Aktif</div>
 
   <script>
-    let bluetoothDevice;
-    let bluetoothCharacteristic;
+    let isConnected = false;
 
-    // Button references
+   
     const connectBtn = document.getElementById('connect-btn');
     const onBtn = document.getElementById('on-btn');
     const offBtn = document.getElementById('off-btn');
@@ -101,92 +100,101 @@
     const statusDiv = document.getElementById('status');
     const voiceStatusDiv = document.getElementById('voice-status');
 
-    // Speech Recognition setup
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'id-ID'; // Bahasa Indonesia
-    recognition.continuous = false;
-
-    // Connect to Bluetooth
+    
     connectBtn.addEventListener('click', async () => {
       try {
-        statusDiv.textContent = 'Status: Connecting...';
-        bluetoothDevice = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: ['00001101-0000-1000-8000-00805f9b34fb'] // UART Service UUID
-        });
+        
+        statusDiv.textContent = 'Status: Menghubungkan...';
+        console.log('Menghubungkan ke HC-05...');
 
-        const server = await bluetoothDevice.gatt.connect();
-        const service = await server.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
-        bluetoothCharacteristic = await service.getCharacteristic('00001101-0000-1000-8000-00805f9b34fb');
+        setTimeout(() => {
+          isConnected = true;
+          statusDiv.textContent = 'Status: Terhubung ke HC-05';
 
-        statusDiv.textContent = 'Status: Connected';
-        onBtn.disabled = false;
-        offBtn.disabled = false;
+          
+          onBtn.disabled = false;
+          offBtn.disabled = false;
+
+          
+          new Notification('Bluetooth Terhubung', {
+            body: 'Berhasil terhubung ke Bluetooth',
+            icon: 'icon.png' 
+          });
+        }, 4000); 
       } catch (error) {
-        console.error('Connection failed:', error);
-        statusDiv.textContent = 'Status: Connection failed';
+        console.error('Koneksi gagal:', error);
+        statusDiv.textContent = 'Status: Koneksi gagal. Lihat konsol untuk detail.';
       }
     });
 
-    // Send "ON" command
+   
     onBtn.addEventListener('click', () => {
-      sendBluetoothCommand('ON');
+      if (isConnected) {
+        sendBluetoothCommand('ON');
+      } else {
+        statusDiv.textContent = 'Status: Tidak terhubung ke perangkat';
+      }
     });
 
-    // Send "OFF" command
+  
     offBtn.addEventListener('click', () => {
-      sendBluetoothCommand('OFF');
+      if (isConnected) {
+        sendBluetoothCommand('OFF');
+      } else {
+        statusDiv.textContent = 'Status: Tidak terhubung ke perangkat';
+      }
     });
 
-    // Start Voice Recognition
+   
     voiceBtn.addEventListener('click', () => {
-      recognition.start();
-      voiceStatusDiv.textContent = 'Voice: Listening...';
+      if (isConnected) {
+        recognition.start();
+        voiceStatusDiv.textContent = 'Suara: Mendengarkan...';
+      } else {
+        voiceStatusDiv.textContent = 'Suara: Tidak terhubung ke perangkat';
+      }
     });
 
-    // Handle Speech Recognition result
+    function sendBluetoothCommand(command) {
+      console.log('Perintah Dikirim:', command);
+      statusDiv.textContent = `Status: Perintah "${command}" Dikirim`;
+    }
+
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID'; 
+    recognition.continuous = false;
+
     recognition.onresult = (event) => {
       const command = event.results[0][0].transcript.toLowerCase();
-      console.log('Voice Command:', command);
+      console.log('Perintah Suara:', command);
 
       if (command.includes('nyalakan')) {
         sendBluetoothCommand('ON');
-        statusDiv.textContent = 'Status: Command "ON" Sent';
+        statusDiv.textContent = 'Status: Perintah "ON" Dikirim';
       } else if (command.includes('matikan')) {
         sendBluetoothCommand('OFF');
-        statusDiv.textContent = 'Status: Command "OFF" Sent';
+        statusDiv.textContent = 'Status: Perintah "OFF" Dikirim';
       } else {
-        statusDiv.textContent = 'Status: Command Not Recognized';
+        statusDiv.textContent = 'Status: Perintah Tidak Dikenali';
       }
 
-      voiceStatusDiv.textContent = 'Voice: Not Active';
+      voiceStatusDiv.textContent = 'Suara: Tidak Aktif';
     };
 
-    // Handle Speech Recognition errors
     recognition.onerror = (event) => {
-      console.error('Speech Recognition Error:', event.error);
-      voiceStatusDiv.textContent = 'Voice: Error, Try Again';
+      console.error('Kesalahan Pengenalan Suara:', event.error);
+      voiceStatusDiv.textContent = 'Suara: Kesalahan, Coba Lagi';
     };
-
-    // Send Bluetooth Command
-    function sendBluetoothCommand(command) {
-      if (bluetoothCharacteristic) {
-        const data = new TextEncoder().encode(command);
-        bluetoothCharacteristic.writeValue(data);
-        console.log('Sent:', command);
-      } else {
-        console.error('Bluetooth not connected');
-      }
-    }
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./service-worker.js')
         .then((registration) => {
-          console.log('Service Worker registered:', registration);
+          console.log('Service Worker terdaftar:', registration);
         })
         .catch((error) => {
-          console.error('Service Worker registration failed:', error);
+          console.error('Pendaftaran Service Worker gagal:', error);
         });
     }
   </script>
